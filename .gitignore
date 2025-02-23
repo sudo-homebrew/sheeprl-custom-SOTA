@@ -173,3 +173,6 @@ mlartifacts
 examples/models
 session_*
 bin/
+
+# DS_Store for mac users
+.DS_Store
