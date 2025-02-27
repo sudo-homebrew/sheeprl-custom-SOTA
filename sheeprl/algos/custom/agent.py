@@ -38,6 +38,9 @@ from sheeprl.utils.fabric import get_single_device_fabric
 from sheeprl.utils.model import ModuleType, cnn_forward
 from sheeprl.utils.utils import symlog
 
+import infini_attention.RoPE
+from infini_attention.infini_attention import InfiniAttention
+
 
 class CNNEncoder(nn.Module):
     """The Dreamer-V3 image encoder. This is composed of 4 `nn.Conv2d` with
@@ -758,6 +761,7 @@ class Actor(nn.Module):
                 self.distribution = "scaled_normal"
             else:
                 self.distribution = "discrete"
+
         self.model = MLP(
             input_dims=latent_state_size,
             output_dim=None,
@@ -768,6 +772,18 @@ class Actor(nn.Module):
             norm_layer=layer_norm_cls,
             norm_args={**layer_norm_kw, "normalized_shape": dense_units},
         )
+
+        print(
+            latent_state_size, '\n',
+            [dense_units] * mlp_layers, '\n',
+            activation, '\n',
+            {"bias": layer_norm_cls == nn.Identity}, '\n',
+            layer_norm_cls, '\n',
+            {**layer_norm_kw, "normalized_shape": dense_units}
+        )
+
+#         self.model = InfiniAttention()
+
         if is_continuous:
             self.mlp_heads = nn.ModuleList([nn.Linear(dense_units, np.sum(actions_dim) * 2)])
         else:
