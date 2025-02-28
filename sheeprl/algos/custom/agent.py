@@ -38,8 +38,8 @@ from sheeprl.utils.fabric import get_single_device_fabric
 from sheeprl.utils.model import ModuleType, cnn_forward
 from sheeprl.utils.utils import symlog
 
-import infini_attention.RoPE
-from infini_attention.infini_attention import InfiniAttention
+import sheeprl.models.infini_attention.RoPE
+from sheeprl.models.infini_attention.infini_attention import InfiniAttention
 
 
 class CNNEncoder(nn.Module):
@@ -745,6 +745,7 @@ class Actor(nn.Module):
         layer_norm_kw: Dict[str, Any] = {"eps": 1e-3},
         unimix: float = 0.01,
         action_clip: float = 1.0,
+        device : str = 'cpu'
     ) -> None:
         super().__init__()
         self.distribution_cfg = distribution_cfg
@@ -762,27 +763,19 @@ class Actor(nn.Module):
             else:
                 self.distribution = "discrete"
 
-        self.model = MLP(
-            input_dims=latent_state_size,
-            output_dim=None,
-            hidden_sizes=[dense_units] * mlp_layers,
-            activation=activation,
-            flatten_dim=None,
-            layer_args={"bias": layer_norm_cls == nn.Identity},
-            norm_layer=layer_norm_cls,
-            norm_args={**layer_norm_kw, "normalized_shape": dense_units},
-        )
+#         self.model = MLP(
+#             input_dims=latent_state_size,
+#             output_dim=None,
+#             hidden_sizes=[dense_units] * mlp_layers,
+#             activation=activation,
+#             flatten_dim=None,
+#             layer_args={"bias": layer_norm_cls == nn.Identity},
+#             norm_layer=layer_norm_cls,
+#             norm_args={**layer_norm_kw, "normalized_shape": dense_units},
+#         )
 
-        print(
-            latent_state_size, '\n',
-            [dense_units] * mlp_layers, '\n',
-            activation, '\n',
-            {"bias": layer_norm_cls == nn.Identity}, '\n',
-            layer_norm_cls, '\n',
-            {**layer_norm_kw, "normalized_shape": dense_units}
-        )
 
-#         self.model = InfiniAttention()
+        self.model = InfiniAttention(seq_len = latent_state_size, emb_dim = dense_units, n_head = 4, d_head = 128 // 4, n_segments = 4, device = device)
 
         if is_continuous:
             self.mlp_heads = nn.ModuleList([nn.Linear(dense_units, np.sum(actions_dim) * 2)])
@@ -877,6 +870,7 @@ class MinedojoActor(Actor):
         layer_norm_kw: Dict[str, Any] = {"eps": 1e-3},
         unimix: float = 0.01,
         action_clip: float = 1.0,
+        device : str = 'cpu'
     ) -> None:
         super().__init__(
             latent_state_size=latent_state_size,
@@ -1164,6 +1158,7 @@ def build_agent(
         layer_norm_kw=actor_cfg.layer_norm.kw,
         unimix=cfg.algo.unimix,
         action_clip=actor_cfg.action_clip,
+        device = fabric.device
     )
 
     critic_ln_cls = hydra.utils.get_class(critic_cfg.layer_norm.cls)
